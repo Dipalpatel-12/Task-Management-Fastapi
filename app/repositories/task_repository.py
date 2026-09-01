@@ -4,12 +4,17 @@ from app.schemas.task import TaskCreate, TaskUpdate
 from datetime import datetime
 from sqlalchemy import or_
 
+
 def create_task(db: Session, task_data: TaskCreate) -> Task:
     new_task = Task(**task_data.model_dump())
     db.add(new_task)
     db.commit()
     db.refresh(new_task)
     return new_task
+
+
+def get_task_by_id(db: Session, task_id: int) -> Task | None:
+    return db.query(Task).filter(Task.id == task_id, Task.deleted_at.is_(None)).first()
 
 
 def get_all_tasks(
@@ -45,7 +50,6 @@ def get_all_tasks(
         query = query.order_by(sort_column.desc())
 
     return query.offset(skip).limit(limit).all()
-
 
 
 def update_task(db: Session, task: Task, update_data: TaskUpdate) -> Task:
