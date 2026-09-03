@@ -22,8 +22,6 @@ def get_task(db: Session, task_id: int) -> Task:
     if not task:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     return task
-
-
 def get_tasks(
     db: Session,
     skip: int = 0,
@@ -31,12 +29,22 @@ def get_tasks(
     search: str = None,
     status_filter: str = None,
     priority_filter: str = None,
+    due_date_from=None,
+    due_date_to=None,
+    hours_min: float = None,
+    hours_max: float = None,
     sort_by: str = "created_at",
     order: str = "desc",
 ):
-    return task_repository.get_all_tasks(
-        db, skip, limit, search, status_filter, priority_filter, sort_by, order
+    tasks = task_repository.get_all_tasks(
+        db, skip, limit, search, status_filter, priority_filter,
+        due_date_from, due_date_to, hours_min, hours_max, sort_by, order
     )
+    total = task_repository.count_tasks(
+        db, search, status_filter, priority_filter,
+        due_date_from, due_date_to, hours_min, hours_max
+    )
+    return {"items": tasks, "total": total}
 
 
 def update_task(db: Session, task_id: int, update_data: TaskUpdate) -> Task:

@@ -2,30 +2,42 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
-from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse
+from datetime import datetime
+from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse, TaskListResponse
 from app.models.task import StatusEnum, PriorityEnum
 from app.services import task_service
 
 router = APIRouter(prefix="/api/v1/tasks", tags=["Tasks"])
 
-
-@router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 def create_task(task_data: TaskCreate, db: Session = Depends(get_db)):
-    return task_service.create_task(db, task_data)
+    task = task_service.create_task(db, task_data)
+    return {
+        "success": True,
+        "status_code": status.HTTP_201_CREATED,
+        "message": "Task created successfully",
+        "data": TaskResponse.model_validate(task),
+    }
 
-
-@router.get("/", response_model=List[TaskResponse])
+@router.get("/", response_model=TaskListResponse)
 def list_tasks(
     skip: int = 0,
     limit: int = 10,
     search: str = None,
     status_filter: StatusEnum = None,
     priority_filter: PriorityEnum = None,
+    due_date_from: datetime = None,
+    due_date_to: datetime = None,
+    hours_min: float = None,
+    hours_max: float = None,
     sort_by: str = "created_at",
     order: str = "desc",
     db: Session = Depends(get_db),
 ):
-    return task_service.get_tasks(db, skip, limit, search, status_filter, priority_filter, sort_by, order)
+    return task_service.get_tasks(
+        db, skip, limit, search, status_filter, priority_filter,
+        due_date_from, due_date_to, hours_min, hours_max, sort_by, order
+    )
 
 
 @router.get("/{task_id}", response_model=TaskResponse)
