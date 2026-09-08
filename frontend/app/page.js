@@ -160,7 +160,7 @@ export default function Home() {
   };
 
   return (
-      <div className="min-h-screen lg:h-screen flex flex-col px-4 sm:px-6 lg:px-8 py-4 lg:py-6 overflow-y-auto lg:overflow-hidden">
+      <div className="h-screen flex flex-col px-4 sm:px-6 lg:px-8 py-4 lg:py-6 overflow-hidden">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6 shrink-0">
           <div>

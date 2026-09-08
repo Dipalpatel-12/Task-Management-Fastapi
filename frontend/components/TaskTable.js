@@ -203,16 +203,19 @@ export default function TaskTable({
 
             {/* Mobile / Tablet — compact card list */}
             <div className="lg:hidden flex-1 min-h-0 overflow-y-auto divide-y divide-slate-100">
-                {tasks.map((task) => {
+                {tasks.map((task, index) => {
                     const overdue = isOverdue(task);
                     return (
                         <button
                             key={task.id}
                             onClick={() => setSelectedTask(task)}
-                            className={`w-full text-left px-4 py-3.5 flex items-center gap-3 transition-colors cursor-pointer ${
+                            className={`w-full text-left px-4 py-3.5 flex items-center gap-5 transition-colors cursor-pointer ${
                                 overdue ? "bg-red-50/60 hover:bg-red-50" : "hover:bg-slate-50"
                             }`}
                         >
+        <span className="shrink-0 text-xs text-slate-400 font-medium w-5 text-center">
+          {(page - 1) * limit + index + 1}
+        </span>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1.5">
                       <span className="text-sm font-medium text-slate-900 truncate">
