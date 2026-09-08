@@ -30,6 +30,7 @@ class TaskResponse(BaseModel):
     status: StatusEnum
     due_date: Optional[datetime]
     estimated_hours: float
+    is_starred: bool
     created_at: datetime
     updated_at: datetime
 
@@ -40,3 +41,12 @@ class TaskResponse(BaseModel):
 class TaskListResponse(BaseModel):
     items: List[TaskResponse]
     total: int
+
+
+class TaskStatsResponse(BaseModel):
+    total: int
+    todo: int
+    in_progress: int
+    completed: int
+    cancelled: int
+    overdue: int

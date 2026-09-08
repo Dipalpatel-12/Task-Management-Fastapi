@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Float, DateTime, Enum
+from sqlalchemy import Column, Integer, String, Text, Float, DateTime, Enum, Boolean
 from sqlalchemy.sql import func
 from app.database import Base
 import enum
@@ -28,6 +28,7 @@ class Task(Base):
     status = Column(Enum(StatusEnum), default=StatusEnum.TODO, nullable=False)
     due_date = Column(DateTime, nullable=True)
     estimated_hours = Column(Float, nullable=False)
+    is_starred = Column(Boolean, default=False, nullable=False, server_default="false")
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     deleted_at = Column(DateTime, nullable=True)

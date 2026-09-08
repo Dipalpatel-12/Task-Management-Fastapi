@@ -77,3 +77,12 @@ def change_priority(db: Session, task_id: int, new_priority):
     db.commit()
     db.refresh(task)
     return task
+
+
+def get_task_stats(db: Session) -> dict:
+    return task_repository.get_status_counts(db)
+
+
+def toggle_star(db: Session, task_id: int) -> Task:
+    task = get_task(db, task_id)
+    return task_repository.toggle_star(db, task)

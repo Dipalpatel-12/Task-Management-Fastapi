@@ -12,18 +12,18 @@ async function handleResponse(res) {
 
 // GET all tasks — search, filter, sort, pagination
 export async function getTasks({
-  skip = 0,
-  limit = 10,
-  search = "",
-  statusFilter = "",
-  priorityFilter = "",
-  dueDateFrom = "",
-  dueDateTo = "",
-  hoursMin = "",
-  hoursMax = "",
-  sortBy = "created_at",
-  order = "desc",
-} = {}) {
+                                 skip = 0,
+                                 limit = 10,
+                                 search = "",
+                                 statusFilter = "",
+                                 priorityFilter = "",
+                                 dueDateFrom = "",
+                                 dueDateTo = "",
+                                 hoursMin = "",
+                                 hoursMax = "",
+                                 sortBy = "created_at",
+                                 order = "desc",
+                               } = {}) {
   const params = new URLSearchParams();
   params.append("skip", skip);
   params.append("limit", limit);
@@ -75,7 +75,7 @@ export async function deleteTask(id) {
     const data = await res.json();
     throw { message: data.message || "Delete failed", errors: data.errors || [] };
   }
-  return true; 
+  return true;
 }
 
 // CHANGE status
@@ -89,6 +89,20 @@ export async function changeTaskStatus(id, newStatus) {
 // CHANGE priority
 export async function changeTaskPriority(id, newPriority) {
   const res = await fetch(`${BASE_URL}/api/v1/tasks/${id}/priority?new_priority=${encodeURIComponent(newPriority)}`, {
+    method: "PATCH",
+  });
+  return handleResponse(res);
+}
+
+// GET task stats — status counts + overdue
+export async function getTaskStats() {
+  const res = await fetch(`${BASE_URL}/api/v1/tasks/stats`);
+  return handleResponse(res);
+}
+
+// TOGGLE star/pin
+export async function toggleTaskStar(id) {
+  const res = await fetch(`${BASE_URL}/api/v1/tasks/${id}/star`, {
     method: "PATCH",
   });
   return handleResponse(res);

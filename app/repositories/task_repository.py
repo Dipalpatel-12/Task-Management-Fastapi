@@ -59,9 +59,9 @@ def get_all_tasks(
 
     sort_column = getattr(Task, sort_by, Task.created_at)
     if order == "asc":
-        query = query.order_by(sort_column.asc())
+        query = query.order_by(sort_column.asc(), Task.id.asc())
     else:
-        query = query.order_by(sort_column.desc())
+        query = query.order_by(sort_column.desc(), Task.id.desc())
 
     return query.offset(skip).limit(limit).all()
 
@@ -91,6 +91,34 @@ def update_task(db: Session, task: Task, update_data: TaskUpdate) -> Task:
 
 def soft_delete_task(db: Session, task: Task) -> Task:
     task.deleted_at = datetime.utcnow()
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+def get_status_counts(db: Session) -> dict:
+    base = db.query(Task).filter(Task.deleted_at.is_(None))
+    total = base.count()
+    todo = base.filter(Task.status == "To Do").count()
+    in_progress = base.filter(Task.status == "In Progress").count()
+    completed = base.filter(Task.status == "Completed").count()
+    cancelled = base.filter(Task.status == "Cancelled").count()
+    overdue = base.filter(
+        Task.due_date < datetime.utcnow(),
+        Task.status.notin_(["Completed", "Cancelled"]),
+    ).count()
+    return {
+        "total": total,
+        "todo": todo,
+        "in_progress": in_progress,
+        "completed": completed,
+        "cancelled": cancelled,
+        "overdue": overdue,
+    }
+
+
+def toggle_star(db: Session, task: Task) -> Task:
+    task.is_starred = not task.is_starred
     db.commit()
     db.refresh(task)
     return task
