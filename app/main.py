@@ -16,7 +16,7 @@ app.add_middleware(
     CORSMiddleware,
   allow_origins=[
    "http://localhost:3000",
-          "https://taskmanagement-roan-zeta.vercel.app",
+          "https://taskmanagement-fastapi.vercel.app",
 
   ],
     allow_credentials=True,
