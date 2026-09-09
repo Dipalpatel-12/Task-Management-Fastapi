@@ -20,14 +20,14 @@ export default function ConfirmDeleteModal({ taskTitle, onCancel, onConfirm, del
         <div className="flex justify-end gap-2">
           <button
             onClick={onCancel}
-            className="px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            className="px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
             disabled={deleting}
-            className="px-4 py-2.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 active:bg-red-800 disabled:opacity-50 transition-colors"
+            className="px-4 py-2.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 active:bg-red-800 disabled:opacity-50 transition-colors cursor-pointer"
           >
             {deleting ? "Deleting..." : "Delete Task"}
           </button>

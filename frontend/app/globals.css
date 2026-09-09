@@ -6,7 +6,7 @@ html, body {
 }
 
 body {
-  background-color: #f8fafc;
+  background-color: rgb(226 237 248 / 0.6);
 }
 
 ::selection {

@@ -4,7 +4,7 @@ import { Inter } from "next/font/google";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "Task Management- Fastapi",
+  title: "Task Management - FastAPI",
   description: "Manage your tasks",
 };
 
