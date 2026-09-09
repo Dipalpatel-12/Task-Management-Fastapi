@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { getTasks, deleteTask, changeTaskStatus, changeTaskPriority, toggleTaskStar } from "../lib/api";
 import TaskTable from "../components/TaskTable";
 import TaskFormModal from "../components/TaskFormModal";
-import { Search, ChevronLeft, ChevronRight, ChevronDown, Plus, Calendar, Clock, X } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ChevronDown, Plus, Calendar, Clock, X, Loader2, RefreshCw } from "lucide-react";
 import ConfirmDeleteModal from "@/components/ConfirmDeleteModal";
 import Toast from "@/components/Toast";
 
@@ -102,12 +102,20 @@ function FilterDropdown({ value, options, placeholder, onChange }) {
   );
 }
 
+// How long to keep silently retrying before giving up and showing an error.
+// Render's free tier can take 30-50s to spin back up from a cold start.
+const RETRY_DELAYS_MS = [800, 1500, 2500, 4000, 6000, 8000, 10000, 10000]; // ~43s total
 
+function isNetworkError(err) {
+  // A cold/unreachable server surfaces as a raw fetch failure, not a JSON error body
+  return err instanceof TypeError || err?.message === "Failed to fetch";
+}
 
 export default function Home() {
   const [tasks, setTasks] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [wakingUp, setWakingUp] = useState(false);
   const [error, setError] = useState("");
 
   const [search, setSearch] = useState("");
@@ -130,33 +138,64 @@ export default function Home() {
 
   const [toast, setToast] = useState(null);
 
+  // Bumps whenever a newer fetch starts, so a slow retry from an older
+  // call can't overwrite state after the user has moved on (e.g. changed filters).
+  const requestIdRef = useRef(0);
+
   const hasActiveFilters =
       statusFilter || priorityFilter || dueDateFrom || dueDateTo || hoursMin || hoursMax;
 
   const fetchTasks = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+
     setLoading(true);
+    setWakingUp(false);
     setError("");
-    try {
-      const skip = (page - 1) * limit;
-      const data = await getTasks({
-        skip,
-        limit,
-        search,
-        statusFilter,
-        priorityFilter,
-        dueDateFrom,
-        dueDateTo,
-        hoursMin,
-        hoursMax,
-        sortBy,
-        order,
-      });
-      setTasks(data.items || data);
-      setTotal(data.total ?? data.length);
-    } catch (err) {
-      setError(err.message || "Failed to load tasks");
-    } finally {
-      setLoading(false);
+
+    const params = {
+      skip: (page - 1) * limit,
+      limit,
+      search,
+      statusFilter,
+      priorityFilter,
+      dueDateFrom,
+      dueDateTo,
+      hoursMin,
+      hoursMax,
+      sortBy,
+      order,
+    };
+
+    for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+      try {
+        const data = await getTasks(params);
+        if (requestId !== requestIdRef.current) return; // a newer request superseded this one
+
+        setTasks(data.items || data);
+        setTotal(data.total ?? data.length);
+        setLoading(false);
+        setWakingUp(false);
+        return;
+      } catch (err) {
+        if (requestId !== requestIdRef.current) return;
+
+        const isLastAttempt = attempt === RETRY_DELAYS_MS.length;
+
+        if (isNetworkError(err) && !isLastAttempt) {
+          setWakingUp(true);
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
+          continue;
+        }
+
+        setError(
+            isNetworkError(err)
+                ? "The server is taking longer than usual to respond."
+                : err.message || "Failed to load tasks"
+        );
+        setLoading(false);
+        setWakingUp(false);
+        return;
+      }
     }
   }, [search, statusFilter, priorityFilter, dueDateFrom, dueDateTo, hoursMin, hoursMax, sortBy, order, page]);
 
@@ -365,24 +404,41 @@ export default function Home() {
           )}
         </div>
 
-        {error && <p className="text-red-600 text-sm mb-3 shrink-0">{error}</p>}
-
-        {/* Table */}
+        {/* Table / Loading / Error */}
         <div className="flex-1 min-h-0 bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col">
-          <TaskTable
-              tasks={tasks}
-              loading={loading}
-              sortBy={sortBy}
-              order={order}
-              onSort={handleSort}
-              onEdit={openEditModal}
-              onDelete={handleDeleteClick}
-              onStatusChange={handleStatusChange}
-              onPriorityChange={handlePriorityChange}
-              onToggleStar={handleToggleStar}
-              page={page}
-              limit={limit}
-          />
+          {loading ? (
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-500">
+                <Loader2 className="animate-spin text-indigo-500" size={28} />
+                <p className="text-sm">
+                  {wakingUp ? "Waking up the server — this can take up to a minute…" : "Loading tasks…"}
+                </p>
+              </div>
+          ) : error ? (
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-500 px-6 text-center">
+                <p className="text-sm text-red-600">{error}</p>
+                <button
+                    onClick={fetchTasks}
+                    className="cursor-pointer flex items-center gap-1.5 border border-slate-200 rounded-lg px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  <RefreshCw size={14} /> Try again
+                </button>
+              </div>
+          ) : (
+              <TaskTable
+                  tasks={tasks}
+                  loading={loading}
+                  sortBy={sortBy}
+                  order={order}
+                  onSort={handleSort}
+                  onEdit={openEditModal}
+                  onDelete={handleDeleteClick}
+                  onStatusChange={handleStatusChange}
+                  onPriorityChange={handlePriorityChange}
+                  onToggleStar={handleToggleStar}
+                  page={page}
+                  limit={limit}
+              />
+          )}
         </div>
 
         {/* Pagination */}

@@ -35,12 +35,7 @@ const PRIORITY_DOT = {
     "Urgent": "bg-red-500",
 };
 
-/**
- * Custom dropdown — replaces native <select> so styling stays
- * consistent everywhere and the menu never gets visually detached
- * from its row (renders via portal, positioned against the trigger,
- * flips upward automatically if there isn't room below).
- */
+
 function Dropdown({ value, options, styleMap, dotMap, onChange, fullWidth = false }) {
     const [open, setOpen] = useState(false);
     const [menuPos, setMenuPos] = useState(null);
