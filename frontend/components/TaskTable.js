@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Pencil, Trash2, Star, ChevronRight, X } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { Pencil, Trash2, Star, ChevronRight, ChevronDown, X } from "lucide-react";
 
 const STATUS_OPTIONS = ["To Do", "In Progress", "Completed", "Cancelled"];
 const PRIORITY_OPTIONS = ["Low", "Medium", "High", "Urgent"];
@@ -19,6 +20,126 @@ const PRIORITY_STYLES = {
     "High": "bg-orange-50 text-orange-700 border-orange-200",
     "Urgent": "bg-red-50 text-red-700 border-red-200",
 };
+
+const STATUS_DOT = {
+    "To Do": "bg-slate-400",
+    "In Progress": "bg-blue-500",
+    "Completed": "bg-green-500",
+    "Cancelled": "bg-red-500",
+};
+
+const PRIORITY_DOT = {
+    "Low": "bg-slate-400",
+    "Medium": "bg-amber-500",
+    "High": "bg-orange-500",
+    "Urgent": "bg-red-500",
+};
+
+/**
+ * Custom dropdown — replaces native <select> so styling stays
+ * consistent everywhere and the menu never gets visually detached
+ * from its row (renders via portal, positioned against the trigger,
+ * flips upward automatically if there isn't room below).
+ */
+function Dropdown({ value, options, styleMap, dotMap, onChange, fullWidth = false }) {
+    const [open, setOpen] = useState(false);
+    const [menuPos, setMenuPos] = useState(null);
+    const triggerRef = useRef(null);
+    const menuRef = useRef(null);
+
+    const openMenu = () => {
+        const rect = triggerRef.current.getBoundingClientRect();
+        const menuHeight = options.length * 34 + 8;
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const openUpward = spaceBelow < menuHeight && rect.top > menuHeight;
+
+        setMenuPos({
+            left: rect.left,
+            width: fullWidth ? rect.width : Math.max(rect.width, 128),
+            top: openUpward ? undefined : rect.bottom + 4,
+            bottom: openUpward ? window.innerHeight - rect.top + 4 : undefined,
+        });
+        setOpen(true);
+    };
+
+    useEffect(() => {
+        if (!open) return;
+
+        const handleOutside = (e) => {
+            if (
+                triggerRef.current?.contains(e.target) ||
+                menuRef.current?.contains(e.target)
+            ) {
+                return;
+            }
+            setOpen(false);
+        };
+        const handleScrollOrResize = () => setOpen(false);
+
+        document.addEventListener("mousedown", handleOutside);
+        window.addEventListener("scroll", handleScrollOrResize, true);
+        window.addEventListener("resize", handleScrollOrResize);
+
+        return () => {
+            document.removeEventListener("mousedown", handleOutside);
+            window.removeEventListener("scroll", handleScrollOrResize, true);
+            window.removeEventListener("resize", handleScrollOrResize);
+        };
+    }, [open]);
+
+    return (
+        <>
+            <button
+                type="button"
+                ref={triggerRef}
+                onClick={() => (open ? setOpen(false) : openMenu())}
+                className={`${fullWidth ? "w-full" : ""} inline-flex items-center justify-between gap-1.5 text-xs font-medium border rounded-md px-2 py-1.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors ${
+                    styleMap[value] || "bg-slate-100 text-slate-700 border-slate-200"
+                }`}
+            >
+                <span className="inline-flex items-center gap-1.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${dotMap[value] || "bg-slate-400"}`} />
+                    {value}
+                </span>
+                <ChevronDown size={12} className={`transition-transform ${open ? "rotate-180" : ""}`} />
+            </button>
+
+            {open &&
+                menuPos &&
+                createPortal(
+                    <div
+                        ref={menuRef}
+                        style={{
+                            position: "fixed",
+                            left: menuPos.left,
+                            top: menuPos.top,
+                            bottom: menuPos.bottom,
+                            width: menuPos.width,
+                        }}
+                        className="z-50 bg-white border border-slate-200 rounded-lg shadow-lg py-1 overflow-hidden"
+                    >
+                        {options.map((opt) => (
+                            <button
+                                key={opt}
+                                type="button"
+                                onClick={() => {
+                                    onChange(opt);
+                                    setOpen(false);
+                                }}
+                                className={`w-full flex items-center gap-2 text-left px-3 py-1.5 text-xs font-medium cursor-pointer hover:bg-slate-50 transition-colors ${
+                                    opt === value ? "bg-slate-50" : ""
+                                }`}
+                            >
+                                <span className={`w-1.5 h-1.5 rounded-full ${dotMap[opt] || "bg-slate-400"}`} />
+                                {opt}
+                            </button>
+                        ))}
+                    </div>,
+                    document.body
+                )}
+        </>
+    );
+}
 
 function SortHeader({ label, column, sortBy, order, onSort, width }) {
     const isActive = sortBy === column;
@@ -137,26 +258,22 @@ export default function TaskTable({
                                     )}
                                 </td>
                                 <td className="px-4 py-3 align-top">
-                                    <select
+                                    <Dropdown
                                         value={task.status}
-                                        onChange={(e) => onStatusChange(task.id, e.target.value)}
-                                        className={`text-xs font-medium border rounded-md px-2 py-1.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 ${STATUS_STYLES[task.status] || "bg-slate-100 text-slate-700 border-slate-200"}`}
-                                    >
-                                        {STATUS_OPTIONS.map((s) => (
-                                            <option key={s} value={s}>{s}</option>
-                                        ))}
-                                    </select>
+                                        options={STATUS_OPTIONS}
+                                        styleMap={STATUS_STYLES}
+                                        dotMap={STATUS_DOT}
+                                        onChange={(val) => onStatusChange(task.id, val)}
+                                    />
                                 </td>
                                 <td className="px-4 py-3 align-top">
-                                    <select
+                                    <Dropdown
                                         value={task.priority}
-                                        onChange={(e) => onPriorityChange(task.id, e.target.value)}
-                                        className={`text-xs font-medium border rounded-md px-2 py-1.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 ${PRIORITY_STYLES[task.priority] || "bg-slate-100 text-slate-700 border-slate-200"}`}
-                                    >
-                                        {PRIORITY_OPTIONS.map((p) => (
-                                            <option key={p} value={p}>{p}</option>
-                                        ))}
-                                    </select>
+                                        options={PRIORITY_OPTIONS}
+                                        styleMap={PRIORITY_STYLES}
+                                        dotMap={PRIORITY_DOT}
+                                        onChange={(val) => onPriorityChange(task.id, val)}
+                                    />
                                 </td>
                                 <td className="px-4 py-3 text-sm text-slate-600 align-top">
                                     {task.due_date ? new Date(task.due_date).toLocaleDateString() : "—"}
@@ -286,34 +403,36 @@ export default function TaskTable({
                         <div className="space-y-3 mb-5">
                             <div>
                                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Status</label>
-                                <select
-                                    value={selectedTask.status}
-                                    onChange={(e) => {
-                                        onStatusChange(selectedTask.id, e.target.value);
-                                        setSelectedTask({ ...selectedTask, status: e.target.value });
-                                    }}
-                                    className={`mt-1 w-full text-sm font-medium border rounded-md px-2.5 py-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 ${STATUS_STYLES[selectedTask.status] || "bg-slate-100 text-slate-700 border-slate-200"}`}
-                                >
-                                    {STATUS_OPTIONS.map((s) => (
-                                        <option key={s} value={s}>{s}</option>
-                                    ))}
-                                </select>
+                                <div className="mt-1">
+                                    <Dropdown
+                                        value={selectedTask.status}
+                                        options={STATUS_OPTIONS}
+                                        styleMap={STATUS_STYLES}
+                                        dotMap={STATUS_DOT}
+                                        fullWidth
+                                        onChange={(val) => {
+                                            onStatusChange(selectedTask.id, val);
+                                            setSelectedTask({ ...selectedTask, status: val });
+                                        }}
+                                    />
+                                </div>
                             </div>
 
                             <div>
                                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Priority</label>
-                                <select
-                                    value={selectedTask.priority}
-                                    onChange={(e) => {
-                                        onPriorityChange(selectedTask.id, e.target.value);
-                                        setSelectedTask({ ...selectedTask, priority: e.target.value });
-                                    }}
-                                    className={`mt-1 w-full text-sm font-medium border rounded-md px-2.5 py-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 ${PRIORITY_STYLES[selectedTask.priority] || "bg-slate-100 text-slate-700 border-slate-200"}`}
-                                >
-                                    {PRIORITY_OPTIONS.map((p) => (
-                                        <option key={p} value={p}>{p}</option>
-                                    ))}
-                                </select>
+                                <div className="mt-1">
+                                    <Dropdown
+                                        value={selectedTask.priority}
+                                        options={PRIORITY_OPTIONS}
+                                        styleMap={PRIORITY_STYLES}
+                                        dotMap={PRIORITY_DOT}
+                                        fullWidth
+                                        onChange={(val) => {
+                                            onPriorityChange(selectedTask.id, val);
+                                            setSelectedTask({ ...selectedTask, priority: val });
+                                        }}
+                                    />
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">

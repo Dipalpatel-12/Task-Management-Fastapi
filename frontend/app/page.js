@@ -1,12 +1,108 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { getTasks, deleteTask, changeTaskStatus, changeTaskPriority, toggleTaskStar } from "../lib/api";
 import TaskTable from "../components/TaskTable";
 import TaskFormModal from "../components/TaskFormModal";
-import { Search, ChevronLeft, ChevronRight, Plus, Calendar, Clock, X } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ChevronDown, Plus, Calendar, Clock, X } from "lucide-react";
 import ConfirmDeleteModal from "@/components/ConfirmDeleteModal";
 import Toast from "@/components/Toast";
+
+
+function FilterDropdown({ value, options, placeholder, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState(null);
+  const triggerRef = useRef(null);
+  const menuRef = useRef(null);
+
+  const allOptions = [{ label: placeholder, value: "" }, ...options];
+  const current = allOptions.find((o) => o.value === value) || allOptions[0];
+
+  const openMenu = () => {
+    const rect = triggerRef.current.getBoundingClientRect();
+    const menuHeight = allOptions.length * 34 + 8;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUpward = spaceBelow < menuHeight && rect.top > menuHeight;
+
+    setMenuPos({
+      left: rect.left,
+      width: Math.max(rect.width, 160),
+      top: openUpward ? undefined : rect.bottom + 4,
+      bottom: openUpward ? window.innerHeight - rect.top + 4 : undefined,
+    });
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleOutside = (e) => {
+      if (triggerRef.current?.contains(e.target) || menuRef.current?.contains(e.target)) return;
+      setOpen(false);
+    };
+    const handleScrollOrResize = () => setOpen(false);
+
+    document.addEventListener("mousedown", handleOutside);
+    window.addEventListener("scroll", handleScrollOrResize, true);
+    window.addEventListener("resize", handleScrollOrResize);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      window.removeEventListener("scroll", handleScrollOrResize, true);
+      window.removeEventListener("resize", handleScrollOrResize);
+    };
+  }, [open]);
+
+  return (
+      <>
+        <button
+            type="button"
+            ref={triggerRef}
+            onClick={() => (open ? setOpen(false) : openMenu())}
+            className="cursor-pointer flex items-center justify-between gap-2 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 min-w-[130px]"
+        >
+          <span className={value ? "text-slate-900" : "text-slate-500"}>{current.label}</span>
+          <ChevronDown size={14} className={`text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+
+        {open &&
+            menuPos &&
+            createPortal(
+                <div
+                    ref={menuRef}
+                    style={{
+                      position: "fixed",
+                      left: menuPos.left,
+                      top: menuPos.top,
+                      bottom: menuPos.bottom,
+                      width: menuPos.width,
+                    }}
+                    className="z-50 bg-white border border-slate-200 rounded-lg shadow-lg py-1 overflow-hidden"
+                >
+                  {allOptions.map((opt) => (
+                      <button
+                          key={opt.value || "all"}
+                          type="button"
+                          onClick={() => {
+                            onChange(opt.value);
+                            setOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-1.5 text-sm cursor-pointer hover:bg-slate-50 transition-colors ${
+                              opt.value === value ? "bg-slate-50 font-medium text-slate-900" : "text-slate-600"
+                          }`}
+                      >
+                        {opt.label}
+                      </button>
+                  ))}
+                </div>,
+                document.body
+            )}
+      </>
+  );
+}
+
+
 
 export default function Home() {
   const [tasks, setTasks] = useState([]);
@@ -164,12 +260,12 @@ export default function Home() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6 shrink-0">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-900">Task Management</h1>
-            <p className="text-sm text-slate-500 mt-0.5">{total} total tasks</p>
+            <h1 className="text-3xl font-semibold text-blue-950">Task Management</h1>
+            <p className="text-sm text-slate-500 mt-0.5">{total} Total Tasks</p>
           </div>
           <button
               onClick={openAddModal}
-              className="cursor-pointer flex items-center justify-center gap-1.5 bg-indigo-600 text-white px-4 py-2.5 rounded-lg font-medium text-sm hover:bg-indigo-700 active:bg-indigo-800 transition-colors w-full sm:w-auto"
+              className="cursor-pointer flex items-center justify-center gap-1.5 bg-indigo-600 text-white px-5 py-3.5 rounded-lg font-medium text-sm hover:bg-indigo-700 active:bg-indigo-800 transition-colors w-full sm:w-auto"
           >
             <Plus size={16} /> Add Task
           </button>
@@ -189,29 +285,29 @@ export default function Home() {
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3 mb-4 shrink-0 bg-slate-50 border border-slate-200 rounded-lg px-4 py-3">
-          <select
+          <FilterDropdown
               value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-              className="cursor-pointer border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="">All Status</option>
-            <option value="To Do">To Do</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Completed">Completed</option>
-            <option value="Cancelled">Cancelled</option>
-          </select>
+              placeholder="All Status"
+              options={[
+                { label: "To Do", value: "To Do" },
+                { label: "In Progress", value: "In Progress" },
+                { label: "Completed", value: "Completed" },
+                { label: "Cancelled", value: "Cancelled" },
+              ]}
+              onChange={(val) => { setStatusFilter(val); setPage(1); }}
+          />
 
-          <select
+          <FilterDropdown
               value={priorityFilter}
-              onChange={(e) => { setPriorityFilter(e.target.value); setPage(1); }}
-              className="cursor-pointer border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="">All Priority</option>
-            <option value="Low">Low</option>
-            <option value="Medium">Medium</option>
-            <option value="High">High</option>
-            <option value="Urgent">Urgent</option>
-          </select>
+              placeholder="All Priority"
+              options={[
+                { label: "Low", value: "Low" },
+                { label: "Medium", value: "Medium" },
+                { label: "High", value: "High" },
+                { label: "Urgent", value: "Urgent" },
+              ]}
+              onChange={(val) => { setPriorityFilter(val); setPage(1); }}
+          />
 
           <div className="w-px h-6 bg-slate-200" />
 
