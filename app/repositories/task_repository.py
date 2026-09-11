@@ -17,7 +17,7 @@ def get_task_by_id(db: Session, task_id: int) -> Task | None:
     return db.query(Task).filter(Task.id == task_id, Task.deleted_at.is_(None)).first()
 
 
-def _apply_filters(query, search, status_filter, priority_filter, due_date_from, due_date_to, hours_min, hours_max):
+def _apply_filters(query, search, status_filter, priority_filter, due_date_from, due_date_to, hours_min, hours_max, is_starred=None):
     if search:
         query = query.filter(
             or_(
@@ -37,6 +37,8 @@ def _apply_filters(query, search, status_filter, priority_filter, due_date_from,
         query = query.filter(Task.estimated_hours >= hours_min)
     if hours_max is not None:
         query = query.filter(Task.estimated_hours <= hours_max)
+    if is_starred is not None:
+        query = query.filter(Task.is_starred == is_starred)
     return query
 
 
@@ -53,9 +55,10 @@ def get_all_tasks(
     hours_max: float | None = None,
     sort_by: str = "created_at",
     order: str = "desc",
+    is_starred: bool | None = None,
 ):
     query = db.query(Task).filter(Task.deleted_at.is_(None))
-    query = _apply_filters(query, search, status_filter, priority_filter, due_date_from, due_date_to, hours_min, hours_max)
+    query = _apply_filters(query, search, status_filter, priority_filter, due_date_from, due_date_to, hours_min, hours_max, is_starred)
 
     sort_column = getattr(Task, sort_by, Task.created_at)
     if order == "asc":
@@ -75,9 +78,10 @@ def count_tasks(
     due_date_to: datetime | None = None,
     hours_min: float | None = None,
     hours_max: float | None = None,
+    is_starred: bool | None = None,
 ):
     query = db.query(Task).filter(Task.deleted_at.is_(None))
-    query = _apply_filters(query, search, status_filter, priority_filter, due_date_from, due_date_to, hours_min, hours_max)
+    query = _apply_filters(query, search, status_filter, priority_filter, due_date_from, due_date_to, hours_min, hours_max, is_starred)
     return query.count()
 
 

@@ -32,11 +32,13 @@ def list_tasks(
     hours_max: float = None,
     sort_by: str = "created_at",
     order: str = "desc",
+      is_starred: bool | None = None,
     db: Session = Depends(get_db),
 ):
     return task_service.get_tasks(
         db, skip, limit, search, status_filter, priority_filter,
-        due_date_from, due_date_to, hours_min, hours_max, sort_by, order
+        due_date_from, due_date_to, hours_min, hours_max, sort_by, order,
+         is_starred
     )
 
 

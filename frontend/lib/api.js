@@ -1,10 +1,10 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// Common response handler — errors throw in consistent format 
+// Common response handler — errors throw in consistent format
 async function handleResponse(res) {
   const data = await res.json();
   if (!res.ok) {
-    // backend sends { success, message, errors } 
+    // backend sends { success, message, errors }
     throw { message: data.message || "Something went wrong", errors: data.errors || [] };
   }
   return data;
@@ -23,6 +23,7 @@ export async function getTasks({
                                  hoursMax = "",
                                  sortBy = "created_at",
                                  order = "desc",
+                                 starredOnly = false,
                                } = {}) {
   const params = new URLSearchParams();
   params.append("skip", skip);
@@ -36,6 +37,7 @@ export async function getTasks({
   if (hoursMax) params.append("hours_max", hoursMax);
   if (sortBy) params.append("sort_by", sortBy);
   if (order) params.append("order", order);
+  if (starredOnly) params.append("is_starred", "true");
 
   const res = await fetch(`${BASE_URL}/api/v1/tasks/?${params.toString()}`);
   return handleResponse(res);

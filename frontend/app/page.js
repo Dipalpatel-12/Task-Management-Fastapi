@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { getTasks, deleteTask, changeTaskStatus, changeTaskPriority, toggleTaskStar } from "../lib/api";
 import TaskTable from "../components/TaskTable";
 import TaskFormModal from "../components/TaskFormModal";
-import { Search, ChevronLeft, ChevronRight, ChevronDown, Plus, Calendar, Clock, X, Loader2, RefreshCw } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ChevronDown, Plus, Calendar, Clock, X, Loader2, RefreshCw, Star } from "lucide-react";
 import ConfirmDeleteModal from "@/components/ConfirmDeleteModal";
 import Toast from "@/components/Toast";
 
@@ -125,6 +125,7 @@ export default function Home() {
   const [dueDateTo, setDueDateTo] = useState("");
   const [hoursMin, setHoursMin] = useState("");
   const [hoursMax, setHoursMax] = useState("");
+  const [starredOnly, setStarredOnly] = useState(false);
   const [sortBy, setSortBy] = useState("created_at");
   const [order, setOrder] = useState("desc");
   const [page, setPage] = useState(1);
@@ -143,7 +144,7 @@ export default function Home() {
   const requestIdRef = useRef(0);
 
   const hasActiveFilters =
-      statusFilter || priorityFilter || dueDateFrom || dueDateTo || hoursMin || hoursMax;
+      statusFilter || priorityFilter || dueDateFrom || dueDateTo || hoursMin || hoursMax || starredOnly;
 
   const fetchTasks = useCallback(async () => {
     const requestId = ++requestIdRef.current;
@@ -164,6 +165,7 @@ export default function Home() {
       hoursMax,
       sortBy,
       order,
+      starredOnly,
     };
 
     for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
@@ -197,7 +199,7 @@ export default function Home() {
         return;
       }
     }
-  }, [search, statusFilter, priorityFilter, dueDateFrom, dueDateTo, hoursMin, hoursMax, sortBy, order, page]);
+  }, [search, statusFilter, priorityFilter, dueDateFrom, dueDateTo, hoursMin, hoursMax, starredOnly, sortBy, order, page]);
 
   useEffect(() => {
     fetchTasks();
@@ -291,6 +293,7 @@ export default function Home() {
     setDueDateTo("");
     setHoursMin("");
     setHoursMax("");
+    setStarredOnly(false);
     setPage(1);
   };
 
@@ -393,6 +396,21 @@ export default function Home() {
                 className="border border-slate-200 rounded-lg px-2.5 py-2 text-sm bg-white w-24 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
+
+          <div className="w-px h-6 bg-slate-200" />
+
+          <button
+              type="button"
+              onClick={() => { setStarredOnly((v) => !v); setPage(1); }}
+              className={`cursor-pointer flex items-center gap-1.5 border rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  starredOnly
+                      ? "bg-amber-50 border-amber-200 text-amber-600"
+                      : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+              }`}
+          >
+            <Star size={15} fill={starredOnly ? "currentColor" : "none"} />
+            Starred only
+          </button>
 
           {hasActiveFilters && (
               <button
